@@ -1,0 +1,793 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NeuralPath — Adaptive Learning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020617;
+  --cyan:#22d3ee;
+  --purple:#a855f7;
+  --pink:#ec4899;
+  --text1:#f1f5f9;
+  --text2:#94a3b8;
+  --text3:#475569;
+  --border:rgba(148,163,184,0.08);
+  --surface:rgba(15,23,42,0.75);
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text1);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--cyan),var(--purple));border-radius:99px}
+
+/* Orbs */
+.orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0}
+.orb1{width:500px;height:500px;top:-150px;left:-100px;background:radial-gradient(circle,rgba(34,211,238,0.10) 0%,transparent 70%);animation:float1 14s ease-in-out infinite}
+.orb2{width:450px;height:450px;top:35%;right:-80px;background:radial-gradient(circle,rgba(168,85,247,0.12) 0%,transparent 70%);animation:float2 12s ease-in-out infinite}
+.orb3{width:350px;height:350px;bottom:-50px;left:38%;background:radial-gradient(circle,rgba(236,72,153,0.07) 0%,transparent 70%);animation:float1 16s ease-in-out infinite reverse}
+@keyframes float1{0%,100%{transform:translate(0,0)}50%{transform:translate(20px,-30px)}}
+@keyframes float2{0%,100%{transform:translate(0,0)}50%{transform:translate(-25px,20px)}}
+
+/* Glass */
+.glass{background:var(--surface);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border:1px solid var(--border);border-radius:1.25rem}
+.glass-card{background:rgba(15,23,42,0.65);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(148,163,184,0.08);border-radius:1.25rem;transition:border-color .3s,box-shadow .3s,transform .25s}
+.glass-card:hover{border-color:rgba(34,211,238,0.22);box-shadow:0 0 30px rgba(34,211,238,0.07),0 20px 40px rgba(0,0,0,.45);transform:translateY(-2px)}
+
+/* Gradients */
+.grad-text{background:linear-gradient(135deg,var(--cyan),var(--purple) 55%,var(--pink));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.grad-text-sub{background:linear-gradient(120deg,#e2e8f0,#94a3b8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+
+/* Button */
+.btn-grad{position:relative;background:linear-gradient(135deg,var(--cyan),var(--purple));border:none;border-radius:.75rem;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;transition:transform .2s,box-shadow .25s;overflow:hidden}
+.btn-grad:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 28px rgba(34,211,238,.3)}
+.btn-grad:active:not(:disabled){transform:translateY(0)}
+.btn-grad:disabled{opacity:.45;cursor:not-allowed}
+
+/* Search */
+.searchbar{background:rgba(15,23,42,0.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(148,163,184,0.12);border-radius:1rem;transition:border-color .3s,box-shadow .3s}
+.searchbar:focus-within{border-color:rgba(34,211,238,.42);box-shadow:0 0 0 3px rgba(34,211,238,.08),0 20px 60px rgba(0,0,0,.5)}
+.searchbar input{background:transparent;border:none;outline:none;color:var(--text1);font-family:'DM Sans',sans-serif;font-size:1rem;width:100%}
+.searchbar input::placeholder{color:var(--text3)}
+
+/* Pace toggle */
+.pace-wrap{background:rgba(15,23,42,.85);border:1px solid var(--border);border-radius:99px;padding:4px;display:inline-flex;backdrop-filter:blur(12px)}
+.pace-btn{position:relative;padding:5px 18px;border-radius:99px;border:none;background:transparent;color:var(--text2);font-family:'Syne',sans-serif;font-size:.78rem;font-weight:700;letter-spacing:.03em;cursor:pointer;transition:color .2s;z-index:1;white-space:nowrap}
+.pace-btn.active{color:#fff}
+.pace-pill{position:absolute;inset:0;background:linear-gradient(135deg,var(--cyan),var(--purple));border-radius:99px;z-index:0;transition:all .3s cubic-bezier(.34,1.56,.64,1)}
+
+/* Badge */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:99px;font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+.b-cyan{background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:var(--cyan)}
+.b-purple{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.25);color:var(--purple)}
+.b-pink{background:rgba(236,72,153,.1);border:1px solid rgba(236,72,153,.25);color:var(--pink)}
+
+/* Topic chip */
+.chip{display:inline-flex;align-items:center;padding:5px 13px;background:rgba(30,41,59,.65);border:1px solid rgba(148,163,184,.1);border-radius:99px;color:var(--text2);font-size:.8rem;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
+.chip:hover{border-color:rgba(34,211,238,.35);color:var(--cyan);background:rgba(34,211,238,.05)}
+
+/* Content blocks */
+.cb{padding:1.1rem 1.35rem;border-left:2px solid rgba(34,211,238,.45);background:rgba(34,211,238,.03);border-radius:0 .75rem .75rem 0;margin:.6rem 0}
+.cb.purple{border-left-color:rgba(168,85,247,.45);background:rgba(168,85,247,.03)}
+.cb.pink{border-left-color:rgba(236,72,153,.45);background:rgba(236,72,153,.03)}
+
+/* Bullet */
+.bullet-row{display:flex;align-items:flex-start;gap:.7rem;padding:.55rem 0;border-bottom:1px solid rgba(148,163,184,.06);font-size:.88rem;color:var(--text2);line-height:1.5}
+.bullet-row:last-child{border-bottom:none}
+.bullet-dot{flex-shrink:0;width:6px;height:6px;margin-top:7px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--purple))}
+
+/* 3-D flashcard */
+.fc-scene{perspective:1000px;width:100%;height:215px;cursor:pointer}
+.fc-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.34,1.56,.64,1)}
+.fc-inner.flipped{transform:rotateY(180deg)}
+.fc-scene:hover .fc-inner:not(.flipped){transform:rotateY(8deg) scale(1.02)}
+.fc-face{position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden;border-radius:1.25rem;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.4rem;text-align:center}
+.fc-front{background:rgba(15,23,42,.8);border:1px solid rgba(148,163,184,.1);backdrop-filter:blur(16px)}
+.fc-back{background:linear-gradient(135deg,rgba(34,211,238,.12),rgba(168,85,247,.12));border:1px solid rgba(34,211,238,.22);backdrop-filter:blur(16px);transform:rotateY(180deg)}
+
+/* Tabs */
+.tab-bar{display:flex;gap:3px;background:rgba(15,23,42,.65);border:1px solid var(--border);border-radius:.75rem;padding:4px}
+.tab-btn{padding:6px 15px;border-radius:.5rem;border:none;background:transparent;color:var(--text2);font-family:'Syne',sans-serif;font-size:.76rem;font-weight:700;letter-spacing:.04em;cursor:pointer;transition:all .2s;white-space:nowrap}
+.tab-btn.active{background:linear-gradient(135deg,rgba(34,211,238,.2),rgba(168,85,247,.2));color:var(--cyan);border:1px solid rgba(34,211,238,.22)}
+.tab-btn:not(.active):hover{color:var(--text1);background:rgba(255,255,255,.04)}
+
+/* Skeleton */
+@keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
+.skel{background:linear-gradient(90deg,rgba(30,41,59,.5) 25%,rgba(51,65,85,.4) 50%,rgba(30,41,59,.5) 75%);background-size:600px 100%;animation:shimmer 1.8s infinite;border-radius:.5rem}
+
+/* Quiz */
+.quiz-opt{padding:.7rem 1rem;border:1px solid rgba(148,163,184,.12);border-radius:.75rem;background:rgba(15,23,42,.65);color:var(--text2);font-size:.85rem;cursor:pointer;transition:all .2s;text-align:left;width:100%;font-family:'DM Sans',sans-serif}
+.quiz-opt:hover:not(:disabled){border-color:rgba(34,211,238,.3);color:var(--text1)}
+.quiz-opt.correct{border-color:rgba(34,211,238,.6)!important;background:rgba(34,211,238,.1)!important;color:var(--cyan)!important}
+.quiz-opt.wrong{border-color:rgba(236,72,153,.6)!important;background:rgba(236,72,153,.08)!important;color:var(--pink)!important}
+
+/* Summary box */
+.sumbox{background:linear-gradient(135deg,rgba(34,211,238,.06),rgba(168,85,247,.06));border:1px solid rgba(168,85,247,.22);border-radius:1rem;padding:1.2rem}
+
+/* Video placeholder */
+.vid-ph{aspect-ratio:16/9;background:rgba(15,23,42,.85);border:1px solid rgba(148,163,184,.08);border-radius:1rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.65rem;cursor:pointer;transition:border-color .2s}
+.vid-ph:hover{border-color:rgba(168,85,247,.3)}
+.vid-btn{width:48px;height:48px;background:linear-gradient(135deg,var(--cyan),var(--purple));border-radius:50%;display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s}
+.vid-ph:hover .vid-btn{transform:scale(1.1);box-shadow:0 0 22px rgba(168,85,247,.4)}
+
+/* Concept map */
+.cmap-wrap{width:100%;height:300px;background:rgba(15,23,42,.55);border:1px solid var(--border);border-radius:1.25rem;overflow:hidden;position:relative}
+
+/* Pulse */
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(34,211,238,.5)}50%{box-shadow:0 0 0 6px rgba(34,211,238,0)}}
+.pulse-dot{display:inline-block;width:7px;height:7px;background:var(--cyan);border-radius:50%;animation:pulse 2s ease-in-out infinite}
+
+/* Glow line */
+.glow-h{height:1px;background:linear-gradient(90deg,transparent,rgba(34,211,238,.25),transparent)}
+
+/* Fade up */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp .45s ease both}
+.fu1{animation:fadeUp .45s .08s ease both}
+.fu2{animation:fadeUp .45s .16s ease both}
+.fu3{animation:fadeUp .45s .24s ease both}
+.fu4{animation:fadeUp .45s .32s ease both}
+
+/* Error */
+.err-box{background:rgba(236,72,153,.08);border:1px solid rgba(236,72,153,.25);border-radius:1rem;padding:1rem 1.25rem}
+
+/* Spin */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin .8s linear infinite}
+
+/* Relative + z */
+.rz{position:relative;z-index:1}
+
+/* Dense */
+.dense{font-size:.88rem;line-height:1.85;color:var(--text2)}
+.dense p+p{margin-top:.8rem}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+<div id="root" class="rz"></div>
+
+<script type="text/babel">
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const CONFIG = {
+  GROQ_API_KEY: "YOUR_GROQ_API_KEY_HERE",   // ← paste your Groq key here
+  MODEL: "llama3-70b-8192",
+  URL:   "https://api.groq.com/openai/v1/chat/completions",
+};
+
+const { useState, useEffect, useCallback, useRef, useMemo } = React;
+
+// ─── SVG ICONS (inline, no external dep) ──────────────────────────────────────
+const Icon = ({ d, size=16, color="currentColor", strokeWidth=1.75, fill="none" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill}
+       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+    {Array.isArray(d) ? d.map((path,i)=><path key={i} d={path}/>) : <path d={d}/>}
+  </svg>
+);
+
+const Icons = {
+  Zap:        "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
+  Book:       "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z",
+  Brain:      ["M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.44-4.04A2.5 2.5 0 0 1 9.5 2z","M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.44-4.04A2.5 2.5 0 0 0 14.5 2z"],
+  Search:     "M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z",
+  Sparkles:   ["M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"],
+  Rotate:     "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5",
+  Eye:        ["M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z","M12 12m-3 0a3 3 0 1 0 6 0 3 3 0 0 0-6 0"],
+  Check:      "M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3",
+  X:          "M18 6 6 18M6 6l12 12",
+  Alert:      ["M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z","M12 9v4M12 17h.01"],
+  Layers:     ["M12 2 2 7l10 5 10-5-10-5z","M2 17l10 5 10-5","M2 12l10 5 10-5"],
+  Play:       "M5 3l14 9-14 9V3z",
+  Flask:      ["M9 3h6","M5.07 11a8 8 0 1 0 13.86 0","M11 3v8l-2.5 4","M13 3v8l2.5 4"],
+  Clock:      ["M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z","M12 6v6l4 2"],
+  Trend:      "M22 7 13.5 15.5l-5-5L2 17M22 7h-7M22 7v7",
+  Network:    ["M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"],
+  Globe:      ["M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z","M12 2a14.5 14.5 0 0 1 0 20A14.5 14.5 0 0 1 12 2z","M2 12h20"],
+  Atom:       ["M12 12m-1 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0","M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5z","M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5z"],
+  Lightbulb:  ["M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5","M9 18h6","M10 22h4"],
+  Lock:       ["M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z","M7 11V7a5 5 0 0 1 10 0v4"],
+};
+
+// ─── DEMO DATA ────────────────────────────────────────────────────────────────
+function buildDemo(topic, pace) {
+  const t = topic || "Quantum Computing";
+  const bodyMap = {
+    deep:   { cb1:`${t} operates on principles fundamentally distinct from classical computation. Qubits leverage superposition to exist as 0 and 1 simultaneously until measured. Combined with entanglement and quantum interference, this enables exponential parallelism impossible in classical systems.`, cb2:`Applications span cryptography (Shor's algorithm), molecular simulation for drug discovery, optimization via quantum annealing, and machine learning acceleration. IBM, Google, and IonQ compete for fault-tolerant milestones.`, cb3:`Decoherence — quantum state loss via environmental interaction — occurs within microseconds at room temperature, necessitating ~15 millikelvin operating conditions. Error correction requires hundreds of physical qubits per logical qubit, making fault-tolerant quantum computing a late-2030s milestone.`, cb4:`Quantum advantage is strictly problem-specific. Grover's algorithm yields only quadratic speedup for unstructured search. Classical computing will dominate most workloads for the foreseeable future.` },
+    steady: { cb1:`${t} uses qubits that harness superposition and entanglement, allowing quantum computers to explore many solutions simultaneously — a massive advantage for specific problem classes.`, cb2:`Key applications include breaking RSA encryption (Shor's algorithm), accelerating drug discovery, and solving complex logistics problems. IBM and Google lead hardware research.`, cb3:`Qubits are extremely fragile; environmental noise causes decoherence in microseconds. Operating near absolute zero helps, but error correction remains a major engineering challenge.`, cb4:`Quantum computers won't replace classical ones — they're specialized tools. Quantum advantage exists only for specific algorithmic problems, not everyday computing tasks.` },
+    fast:   { cb1:"Qubits use superposition to be 0 and 1 at once — massively parallel processing.", cb2:"Threatens RSA encryption, accelerates drug discovery and optimization tasks.", cb3:"Decoherence is the core problem: qubits collapse at room temperature within microseconds.", cb4:"Not universally faster — only beats classical computing for specific problem types." },
+  };
+  const b = bodyMap[pace] || bodyMap.steady;
+  return {
+    title: `${t}: A Complete Adaptive Overview`,
+    summary: `${t} represents one of the most transformative paradigm shifts in computation. This adaptive module distills core concepts — from quantum mechanics foundations to real-world applications — tailored to your selected learning pace.`,
+    content_blocks: [
+      { id:"cb1", type:"concept",  heading:"Foundational Principles",    body:b.cb1, accent:"cyan"   },
+      { id:"cb2", type:"example",  heading:"Real-World Applications",    body:b.cb2, accent:"purple" },
+      { id:"cb3", type:"insight",  heading:"Core Engineering Challenges", body:b.cb3, accent:"pink"  },
+      { id:"cb4", type:"warning",  heading:"Common Misconceptions",      body:b.cb4, accent:"cyan"   },
+    ],
+    key_points: [
+      "Qubits exploit superposition: simultaneously 0 and 1 until measured",
+      "Quantum entanglement correlates qubit states across physical distance",
+      "Decoherence is the primary engineering barrier today",
+      "Quantum speedup is problem-specific — not a universal accelerator",
+      "The first fault-tolerant machines may arrive in the mid-to-late 2030s",
+    ],
+    flashcards: [
+      { id:"f1", q:"What is superposition?",           a:"A qubit's ability to exist as both 0 and 1 simultaneously until measurement collapses it to a definite state.",                      diff:"easy"   },
+      { id:"f2", q:"What is quantum entanglement?",    a:"A phenomenon where two qubits become correlated — measuring one instantly determines the state of the other, regardless of distance.", diff:"medium" },
+      { id:"f3", q:"What is decoherence?",             a:"The loss of quantum state due to environmental interactions — the primary reason quantum computers operate near absolute zero.",        diff:"medium" },
+      { id:"f4", q:"What does Shor's Algorithm do?",   a:"Factors large integers exponentially faster than classical algorithms, threatening the security of RSA public-key encryption.",          diff:"hard"   },
+      { id:"f5", q:"Why operate at 15 millikelvin?",   a:"To minimize thermal noise that collapses qubit coherence. This temperature is colder than outer space.",                               diff:"easy"   },
+      { id:"f6", q:"What is quantum advantage?",       a:"The threshold where a quantum computer solves a problem that any classical computer cannot solve within a practical timeframe.",         diff:"hard"   },
+    ],
+    concept_nodes: [
+      { id:"n1", label:t,              x:50, y:45, size:18, type:"core"   },
+      { id:"n2", label:"Qubits",       x:22, y:22, size:13, type:"branch" },
+      { id:"n3", label:"Algorithms",   x:78, y:22, size:13, type:"branch" },
+      { id:"n4", label:"Hardware",     x:22, y:70, size:12, type:"branch" },
+      { id:"n5", label:"Applications", x:78, y:70, size:12, type:"branch" },
+      { id:"n6", label:"Superposition",x:5,  y:45, size:8,  type:"leaf"   },
+      { id:"n7", label:"Entanglement", x:50, y:8,  size:8,  type:"leaf"   },
+    ],
+    concept_edges: [
+      {from:"n1",to:"n2"},{from:"n1",to:"n3"},
+      {from:"n1",to:"n4"},{from:"n1",to:"n5"},
+      {from:"n2",to:"n6"},{from:"n2",to:"n7"},
+    ],
+    quiz: [
+      { id:"q1", q:"Which property lets a qubit be 0 and 1 simultaneously?", opts:["Entanglement","Superposition","Interference","Decoherence"], ans:1 },
+      { id:"q2", q:"What is the main hardware challenge in quantum computing?",opts:["Slow clock speeds","High power use","Decoherence","Limited memory"], ans:2 },
+      { id:"q3", q:"What does Shor's algorithm threaten?",                    opts:["Cloud storage","GPS systems","RSA encryption","AI training"],       ans:2 },
+    ],
+    meta: { diff:"intermediate", mins: pace==="deep"?25:pace==="steady"?15:8, tags:["quantum","computing","physics"] },
+  };
+}
+
+// ─── GROQ FETCH ───────────────────────────────────────────────────────────────
+const SYS = (pace) => `You are NeuralPath, an adaptive AI tutor. Return ONLY valid JSON — no markdown, no prose.
+Schema (exact):
+{
+  "title":"string",
+  "summary":"string",
+  "content_blocks":[{"id":"string","type":"concept|example|insight|warning","heading":"string","body":"string","accent":"cyan|purple|pink"}],
+  "key_points":["string x5"],
+  "flashcards":[{"id":"string","q":"string","a":"string","diff":"easy|medium|hard"}],
+  "concept_nodes":[{"id":"string","label":"string","x":0-100,"y":0-100,"size":8-20,"type":"core|branch|leaf"}],
+  "concept_edges":[{"from":"id","to":"id"}],
+  "quiz":[{"id":"string","q":"string","opts":["4 strings"],"ans":0-3}],
+  "meta":{"diff":"beginner|intermediate|advanced","mins":number,"tags":["x3"]}
+}
+Produce exactly 4 content_blocks, 6 flashcards, 7 concept_nodes, 3 quiz questions.
+Pace="${pace}": ${pace==="deep"?"Use dense academic language, 4-5 sentences per block.":pace==="steady"?"Use clear balanced paragraphs, 2-3 sentences per block.":"Use punchy single sentences per block."}`;
+
+async function fetchContent(topic, pace) {
+  if (!CONFIG.GROQ_API_KEY || CONFIG.GROQ_API_KEY === "YOUR_GROQ_API_KEY_HERE") {
+    await new Promise(r => setTimeout(r, 900)); // simulate latency
+    return buildDemo(topic, pace);
+  }
+  const res = await fetch(CONFIG.URL, {
+    method: "POST",
+    headers: { "Content-Type":"application/json", "Authorization":`Bearer ${CONFIG.GROQ_API_KEY}` },
+    body: JSON.stringify({
+      model: CONFIG.MODEL,
+      messages: [{ role:"system", content:SYS(pace) }, { role:"user", content:`Topic: ${topic}` }],
+      temperature: 0.7,
+      max_tokens: 3000,
+    }),
+  });
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || `HTTP ${res.status}`); }
+  const data = await res.json();
+  const raw = data.choices?.[0]?.message?.content || "{}";
+  const clean = raw.replace(/```json|```/g,"").trim();
+  try { return JSON.parse(clean); }
+  catch { const m = clean.match(/\{[\s\S]*\}/); if (m) return JSON.parse(m[0]); throw new Error("Invalid JSON from API"); }
+}
+
+// ─── SUGGESTED TOPICS ─────────────────────────────────────────────────────────
+const TOPICS = ["Quantum Computing","Neural Networks","Black Holes","CRISPR","Blockchain","Dark Matter","Epigenetics","The Turing Test","General Relativity"];
+const PACES  = [{id:"fast",label:"Fast"},{id:"steady",label:"Steady"},{id:"deep",label:"Deep"}];
+
+// ─── SKELETON ─────────────────────────────────────────────────────────────────
+function Skeleton() {
+  return (
+    <div className="max-w-4xl mx-auto px-6 py-8 space-y-5">
+      <div className="skel h-10 w-2/3 mx-auto"/>
+      <div className="skel h-4 w-full"/><div className="skel h-4 w-5/6"/>
+      <div className="grid grid-cols-2 gap-4 mt-4">
+        {[0,1,2,3].map(i=><div key={i} className="skel h-28 rounded-2xl"/>)}
+      </div>
+      <div className="skel h-44 rounded-2xl"/>
+      <div className="grid grid-cols-3 gap-3">
+        {[0,1,2,3,4,5].map(i=><div key={i} className="skel h-52 rounded-2xl"/>)}
+      </div>
+    </div>
+  );
+}
+
+// ─── CONCEPT MAP ──────────────────────────────────────────────────────────────
+function ConceptMap({ nodes=[], edges=[] }) {
+  const [hov, setHov] = useState(null);
+  const W=680, H=280;
+  const cx = (x) => (x/100)*(W-80)+40;
+  const cy = (y) => (y/100)*(H-60)+30;
+  const tc  = {core:"#22d3ee", branch:"#a855f7", leaf:"#ec4899"};
+
+  return (
+    <div className="cmap-wrap">
+      <div style={{position:"absolute",top:10,left:14,display:"flex",alignItems:"center",gap:6,zIndex:2}}>
+        <Icon d={Icons.Network} size={12} color="#475569"/>
+        <span style={{fontFamily:"'JetBrains Mono'",fontSize:"0.68rem",color:"#475569",letterSpacing:".06em"}}>CONCEPT MAP</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%">
+        <defs>
+          <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.28"/>
+            <stop offset="100%" stopColor="#22d3ee" stopOpacity="0"/>
+          </radialGradient>
+        </defs>
+        {edges.map((e,i)=>{
+          const a=nodes.find(n=>n.id===e.from), b=nodes.find(n=>n.id===e.to);
+          if(!a||!b) return null;
+          return <line key={i} x1={cx(a.x)} y1={cy(a.y)} x2={cx(b.x)} y2={cy(b.y)}
+            stroke="rgba(148,163,184,.15)" strokeWidth={hov===e.from||hov===e.to?1.8:.8}
+            strokeDasharray={b.type==="leaf"?"4 4":"none"}/>;
+        })}
+        {nodes.map(n=>(
+          <g key={n.id} onMouseEnter={()=>setHov(n.id)} onMouseLeave={()=>setHov(null)} style={{cursor:"pointer"}}>
+            {n.type==="core"&&<circle cx={cx(n.x)} cy={cy(n.y)} r={n.size*2.8} fill="url(#coreGlow)"/>}
+            <circle cx={cx(n.x)} cy={cy(n.y)} r={n.size}
+              fill={tc[n.type]||"#94a3b8"} fillOpacity={hov===n.id?.32:.14}
+              stroke={tc[n.type]||"#94a3b8"} strokeWidth={hov===n.id?2:1}/>
+            <text x={cx(n.x)} y={cy(n.y)+n.size+12} textAnchor="middle"
+              fill={hov===n.id?"#f1f5f9":"#64748b"}
+              fontSize={n.type==="core"?11:9}
+              fontFamily="'JetBrains Mono',monospace"
+              fontWeight={n.type==="core"?"600":"400"}>
+              {n.label}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// ─── QUIZ ─────────────────────────────────────────────────────────────────────
+function Quiz({ quiz=[] }) {
+  const [ans, setAns] = useState({});
+  const [score, setScore] = useState(null);
+
+  const pick = (qid, idx, correct) => {
+    if (ans[qid]!==undefined) return;
+    const next = {...ans, [qid]:{idx, ok: idx===correct}};
+    setAns(next);
+    if (Object.keys(next).length===quiz.length) {
+      setTimeout(()=>setScore(Object.values(next).filter(a=>a.ok).length),300);
+    }
+  };
+
+  if (!quiz.length) return null;
+  return (
+    <div className="glass-card p-5 space-y-5">
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <Icon d={Icons.Flask} size={14} color="#22d3ee"/>
+          <span style={{fontFamily:"'Syne'",fontSize:".85rem",fontWeight:700,color:"#f1f5f9"}}>Quick Quiz</span>
+        </div>
+        {score!==null && <span className="badge b-cyan">{score}/{quiz.length} Correct</span>}
+      </div>
+      {quiz.map((q,qi)=>(
+        <div key={q.id} className="space-y-2">
+          <p style={{fontSize:".85rem",fontWeight:500,color:"#cbd5e1"}}>{qi+1}. {q.q}</p>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {q.opts.map((opt,oi)=>{
+              const a=ans[q.id];
+              let cls="quiz-opt";
+              if(a!==undefined){if(oi===q.ans)cls+=" correct";else if(oi===a.idx&&oi!==q.ans)cls+=" wrong";}
+              return <button key={oi} className={cls} disabled={a!==undefined} onClick={()=>pick(q.id,oi,q.ans)}>{opt}</button>;
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── FAST SKIMMER ─────────────────────────────────────────────────────────────
+function FastView({ data }) {
+  return (
+    <div className="space-y-5 fu">
+      <div className="glass-card p-5">
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+          <Icon d={Icons.Zap} size={14} color="#22d3ee"/>
+          <span style={{fontFamily:"'Syne'",fontSize:".8rem",fontWeight:800,color:"#f1f5f9",letterSpacing:".06em"}}>KEY TAKEAWAYS</span>
+        </div>
+        {(data.key_points||[]).map((pt,i)=>(
+          <div key={i} className="bullet-row"><span className="bullet-dot"/><span>{pt}</span></div>
+        ))}
+      </div>
+      <div className="sumbox">
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+          <span className="badge b-purple"><Icon d={Icons.Lightbulb} size={10} color="#a855f7"/>TL;DR</span>
+        </div>
+        <p style={{fontSize:".85rem",color:"#cbd5e1",lineHeight:1.7}}>{data.summary}</p>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        {(data.content_blocks||[]).map(cb=>(
+          <div key={cb.id} className={`cb ${cb.accent}`}>
+            <span style={{fontSize:".68rem",fontFamily:"'JetBrains Mono'",color:"#475569",textTransform:"uppercase",letterSpacing:".06em"}}>{cb.type}</span>
+            <p style={{fontFamily:"'Syne'",fontWeight:700,color:"#f1f5f9",fontSize:".88rem",margin:"4px 0 6px"}}>{cb.heading}</p>
+            <p style={{fontSize:".8rem",color:"#94a3b8",lineHeight:1.55}}>{cb.body}</p>
+          </div>
+        ))}
+      </div>
+      <Quiz quiz={data.quiz||[]}/>
+    </div>
+  );
+}
+
+// ─── STEADY LEARNER ───────────────────────────────────────────────────────────
+function SteadyView({ data }) {
+  return (
+    <div className="space-y-5 fu">
+      <div className="sumbox">
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+          <Icon d={Icons.Book} size={14} color="#a855f7"/>
+          <span style={{fontFamily:"'Syne'",fontWeight:700,color:"#f1f5f9",fontSize:".88rem"}}>Overview</span>
+        </div>
+        <p style={{fontSize:".875rem",color:"#cbd5e1",lineHeight:1.75}}>{data.summary}</p>
+      </div>
+      <div className="space-y-4">
+        {(data.content_blocks||[]).map((cb,i)=>(
+          <div key={cb.id} className="glass-card p-5 fu" style={{animationDelay:`${i*.08}s`}}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
+              <div style={{width:3,alignSelf:"stretch",borderRadius:99,flexShrink:0,background:cb.accent==="cyan"?"#22d3ee":cb.accent==="purple"?"#a855f7":"#ec4899"}}/>
+              <div>
+                <p style={{fontFamily:"'Syne'",fontWeight:700,color:"#f1f5f9",marginBottom:8}}>{cb.heading}</p>
+                <p style={{fontSize:".875rem",color:"#94a3b8",lineHeight:1.7}}>{cb.body}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        {["Introduction & Context","Deep Explanation"].map((lbl,i)=>(
+          <div key={i} className="vid-ph">
+            <div className="vid-btn"><Icon d={Icons.Play} size={18} color="white" fill="white"/></div>
+            <p style={{color:"#94a3b8",fontSize:".8rem",fontWeight:500}}>{lbl}</p>
+            <p style={{color:"#334155",fontSize:".75rem",fontFamily:"'JetBrains Mono'"}}>~{3+i*2} min</p>
+          </div>
+        ))}
+      </div>
+      <Quiz quiz={data.quiz||[]}/>
+    </div>
+  );
+}
+
+// ─── DEEP DIVER ───────────────────────────────────────────────────────────────
+function DeepView({ data }) {
+  const [tab, setTab] = useState("theory");
+  const tabs=[
+    {id:"theory", label:"Theory",      icon:Icons.Atom  },
+    {id:"context",label:"Context",     icon:Icons.Globe },
+    {id:"map",    label:"Concept Map", icon:Icons.Network},
+    {id:"quiz",   label:"Assessment",  icon:Icons.Flask },
+  ];
+
+  return (
+    <div className="space-y-5 fu">
+      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+        <span className="badge b-pink"><Icon d={Icons.Trend} size={10} color="#ec4899"/>{data.meta?.diff||"intermediate"}</span>
+        <span className="badge b-cyan"><Icon d={Icons.Clock} size={10} color="#22d3ee"/>~{data.meta?.mins||25} min</span>
+        {(data.meta?.tags||[]).map(t=><span key={t} className="badge b-purple">{t}</span>)}
+      </div>
+      <div className="tab-bar" style={{flexWrap:"wrap"}}>
+        {tabs.map(t=>(
+          <button key={t.id} className={`tab-btn ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)}>
+            <span style={{display:"flex",alignItems:"center",gap:5}}>
+              <Icon d={t.icon} size={11} color={tab===t.id?"#22d3ee":"currentColor"}/>
+              {t.label}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {tab==="theory" && (
+        <div className="glass-card p-6 fu">
+          <p style={{fontSize:".875rem",color:"#94a3b8",lineHeight:1.8,marginBottom:16}}>{data.summary}</p>
+          <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(34,211,238,.2),transparent)",marginBottom:16}}/>
+          <div className="dense">
+            {(data.content_blocks||[]).map(cb=>(
+              <div key={cb.id} className={`cb ${cb.accent}`}>
+                <p style={{fontFamily:"'Syne'",fontWeight:700,color:"#f1f5f9",fontSize:".88rem",marginBottom:8}}>{cb.heading}</p>
+                <p>{cb.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tab==="context" && (
+        <div className="glass-card p-6 fu space-y-4">
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+            <Icon d={Icons.Globe} size={14} color="#a855f7"/>
+            <span style={{fontFamily:"'Syne'",fontWeight:700,color:"#f1f5f9"}}>Historical & Broader Context</span>
+          </div>
+          {(data.key_points||[]).map((pt,i)=>(
+            <div key={i} style={{display:"flex",gap:12}}>
+              <span style={{fontFamily:"'JetBrains Mono'",fontSize:".72rem",color:"#334155",marginTop:2,flexShrink:0}}>0{i+1}</span>
+              <p style={{fontSize:".875rem",color:"#94a3b8",lineHeight:1.75}}>{pt}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab==="map"   && <ConceptMap nodes={data.concept_nodes||[]} edges={data.concept_edges||[]}/>}
+      {tab==="quiz"  && <Quiz quiz={data.quiz||[]}/>}
+    </div>
+  );
+}
+
+// ─── FLASHCARD ────────────────────────────────────────────────────────────────
+function Flashcard({ card, idx }) {
+  const [flipped, setFlipped] = useState(false);
+  const dc={easy:"b-cyan", medium:"b-purple", hard:"b-pink"};
+  return (
+    <div className="fc-scene" onClick={()=>setFlipped(f=>!f)}
+         style={{animationDelay:`${idx*.07}s`}} >
+      <div className={`fc-inner ${flipped?"flipped":""}`}>
+        <div className="fc-face fc-front">
+          <span className={`badge ${dc[card.diff]||"b-cyan"}`} style={{marginBottom:12}}>{card.diff}</span>
+          <p style={{fontFamily:"'Syne'",fontWeight:700,fontSize:".85rem",color:"#f1f5f9",lineHeight:1.55}}>{card.q}</p>
+          <div style={{marginTop:14,display:"flex",alignItems:"center",gap:4,color:"#475569",fontSize:".72rem"}}>
+            <Icon d={Icons.Rotate} size={10} color="#475569"/>tap to reveal
+          </div>
+        </div>
+        <div className="fc-face fc-back">
+          <Icon d={Icons.Eye} size={15} color="#22d3ee"/>
+          <p style={{fontSize:".85rem",color:"#e2e8f0",lineHeight:1.6,marginTop:10}}>{card.a}</p>
+          <div style={{marginTop:12,display:"flex",alignItems:"center",gap:4,color:"#475569",fontSize:".72rem"}}>
+            <Icon d={Icons.Check} size={10} color="#475569"/>tap to flip back
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── HEADER ───────────────────────────────────────────────────────────────────
+function Header({ pace, setPace, show }) {
+  return (
+    <header style={{position:"relative",zIndex:10,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 24px",borderBottom:"1px solid rgba(148,163,184,.07)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#22d3ee,#a855f7)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <Icon d={Icons.Brain} size={15} color="white"/>
+        </div>
+        <span style={{fontFamily:"'Syne'",fontWeight:800,fontSize:"1.1rem",letterSpacing:"-.01em",color:"#f1f5f9"}}>
+          Neural<span style={{background:"linear-gradient(135deg,#22d3ee,#a855f7)",WebkitBackgroundClip:"text",backgroundClip:"text",WebkitTextFillColor:"transparent"}}>Path</span>
+        </span>
+      </div>
+
+      {show && (
+        <div className="pace-wrap">
+          {PACES.map(p=>(
+            <button key={p.id} className={`pace-btn ${pace===p.id?"active":""}`} onClick={()=>setPace(p.id)}>
+              {pace===p.id && <span className="pace-pill"/>}
+              <span style={{position:"relative",zIndex:1}}>{p.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <span className="pulse-dot"/>
+        <span style={{fontFamily:"'JetBrains Mono'",fontSize:".7rem",color:"#334155"}}>groq · llama3</span>
+      </div>
+    </header>
+  );
+}
+
+// ─── HERO ─────────────────────────────────────────────────────────────────────
+function Hero({ onSearch, loading }) {
+  const [q, setQ] = useState("");
+  const go = () => { const t=q.trim(); if(t) onSearch(t); };
+
+  return (
+    <section style={{position:"relative",zIndex:1,paddingTop:64,paddingBottom:40,textAlign:"center",padding:"64px 24px 40px"}}>
+      <div className="fu" style={{marginBottom:20}}>
+        <span className="badge b-cyan"><Icon d={Icons.Sparkles} size={10} color="#22d3ee"/>AI-Powered Adaptive Learning</span>
+      </div>
+
+      <h1 className="fu1" style={{fontFamily:"'Syne'",fontWeight:800,fontSize:"clamp(2.5rem,6vw,4.2rem)",lineHeight:1.05,letterSpacing:"-.03em",marginBottom:16}}>
+        <span style={{color:"#f1f5f9"}}>What do you want to</span><br/>
+        <span style={{background:"linear-gradient(135deg,#22d3ee,#a855f7 55%,#ec4899)",WebkitBackgroundClip:"text",backgroundClip:"text",WebkitTextFillColor:"transparent"}}>master today?</span>
+      </h1>
+
+      <p className="fu2" style={{color:"#64748b",fontSize:"1rem",marginBottom:36,maxWidth:500,margin:"0 auto 36px",lineHeight:1.7}}>
+        Enter any topic. NeuralPath adapts depth, format, and pace to how your brain works best.
+      </p>
+
+      <div className="fu3" style={{maxWidth:640,margin:"0 auto"}}>
+        <div className="searchbar" style={{display:"flex",alignItems:"center",gap:12,padding:"14px 18px"}}>
+          <Icon d={Icons.Search} size={17} color="#475569"/>
+          <input
+            placeholder="e.g. Quantum Computing, Neural Networks, CRISPR…"
+            value={q}
+            onChange={e=>setQ(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&go()}
+            disabled={loading}
+            autoFocus
+          />
+          <button className="btn-grad" onClick={go} disabled={loading||!q.trim()}
+            style={{padding:"8px 20px",fontSize:".85rem",display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+            {loading
+              ? <><span style={{width:12,height:12,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",display:"inline-block"}} className="spin"/>Generating…</>
+              : <><Icon d={Icons.Sparkles} size={13} color="white"/>Learn</>
+            }
+          </button>
+        </div>
+      </div>
+
+      <div className="fu4" style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:8,marginTop:20}}>
+        {TOPICS.map(t=>(
+          <button key={t} className="chip" onClick={()=>{setQ(t);onSearch(t);}}>{t}</button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function Dashboard({ data, pace, loading }) {
+  if (loading) return <Skeleton/>;
+  if (!data)   return null;
+
+  const ViewMap = { fast:FastView, steady:SteadyView, deep:DeepView };
+  const View = ViewMap[pace] || SteadyView;
+
+  return (
+    <main style={{maxWidth:900,margin:"0 auto",padding:"0 24px 24px"}}>
+      <div key={data.title} className="fu" style={{marginBottom:24}}>
+        <h2 style={{fontFamily:"'Syne'",fontSize:"clamp(1.5rem,3vw,2.2rem)",fontWeight:800,background:"linear-gradient(120deg,#e2e8f0,#94a3b8)",WebkitBackgroundClip:"text",backgroundClip:"text",WebkitTextFillColor:"transparent",lineHeight:1.2,marginBottom:8}}>
+          {data.title}
+        </h2>
+        <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+          {(data.meta?.tags||[]).map(t=>(
+            <span key={t} style={{fontFamily:"'JetBrains Mono'",fontSize:".72rem",color:"#334155"}}>#{t}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Pace descriptor */}
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:20}}>
+        {pace==="fast"  && <><span className="badge b-cyan"><Icon d={Icons.Zap} size={10} color="#22d3ee"/>Fast Mode</span><span style={{color:"#334155",fontSize:".8rem"}}>Key takeaways &amp; quick quiz</span></>}
+        {pace==="steady"&& <><span className="badge b-purple"><Icon d={Icons.Book} size={10} color="#a855f7"/>Steady Mode</span><span style={{color:"#334155",fontSize:".8rem"}}>Balanced explanations</span></>}
+        {pace==="deep"  && <><span className="badge b-pink"><Icon d={Icons.Brain} size={10} color="#ec4899"/>Deep Mode</span><span style={{color:"#334155",fontSize:".8rem"}}>Academic depth + concept map</span></>}
+      </div>
+
+      <View key={pace} data={data}/>
+    </main>
+  );
+}
+
+// ─── FLASHCARD GRID ───────────────────────────────────────────────────────────
+function FlashcardGrid({ cards=[] }) {
+  if (!cards.length) return null;
+  return (
+    <section style={{maxWidth:900,margin:"0 auto",padding:"0 24px 48px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+        <div>
+          <h3 style={{fontFamily:"'Syne'",fontWeight:800,color:"#f1f5f9",fontSize:"1.1rem"}}>Flashcards</h3>
+          <p style={{color:"#334155",fontSize:".78rem",marginTop:2}}>Click any card to reveal the answer</p>
+        </div>
+        <span className="badge b-purple"><Icon d={Icons.Layers} size={10} color="#a855f7"/>{cards.length} cards</span>
+      </div>
+      <div className="glow-h" style={{marginBottom:20}}/>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:14}}>
+        {cards.map((c,i)=><Flashcard key={c.id} card={c} idx={i}/>)}
+      </div>
+    </section>
+  );
+}
+
+// ─── ERROR BANNER ─────────────────────────────────────────────────────────────
+function ErrorBanner({ msg, onDismiss }) {
+  if (!msg) return null;
+  return (
+    <div style={{maxWidth:900,margin:"0 auto 16px",padding:"0 24px"}}>
+      <div className="err-box" style={{display:"flex",alignItems:"flex-start",gap:10}}>
+        <Icon d={Icons.Alert} size={15} color="#ec4899"/>
+        <div style={{flex:1}}>
+          <p style={{fontSize:".85rem",fontWeight:600,color:"#f9a8d4"}}>Content generation error</p>
+          <p style={{fontSize:".78rem",color:"rgba(249,168,212,.6)",marginTop:2}}>{msg}</p>
+        </div>
+        <button onClick={onDismiss} style={{background:"none",border:"none",cursor:"pointer",color:"#475569"}}>
+          <Icon d={Icons.X} size={14} color="#475569"/>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── APP ──────────────────────────────────────────────────────────────────────
+function App() {
+  const [pace,    setPace]   = useState("steady");
+  const [data,    setData]   = useState(null);
+  const [loading, setLoad]   = useState(false);
+  const [error,   setError]  = useState(null);
+  const topicRef = useRef("Quantum Computing");
+
+  const load = useCallback(async (topic, p) => {
+    setLoad(true); setError(null);
+    try {
+      const result = await fetchContent(topic, p||pace);
+      setData(result);
+    } catch(e) {
+      setError(e.message);
+    } finally {
+      setLoad(false);
+    }
+  }, [pace]);
+
+  // Boot with demo
+  useEffect(() => { load("Quantum Computing", "steady"); }, []);
+
+  // Re-fetch on pace change if we have a topic
+  const paceRef = useRef(pace);
+  useEffect(()=>{
+    if(paceRef.current!==pace && topicRef.current) {
+      paceRef.current=pace;
+      load(topicRef.current, pace);
+    }
+  },[pace]);
+
+  const handleSearch = (topic) => {
+    topicRef.current = topic;
+    load(topic, pace);
+  };
+
+  return (
+    <div style={{minHeight:"100vh",background:"#020617",position:"relative"}}>
+      {/* Orbs */}
+      <div className="orb orb1"/><div className="orb orb2"/><div className="orb orb3"/>
+
+      <div style={{position:"relative",zIndex:1}}>
+        <Header pace={pace} setPace={setPace} show={!!data}/>
+        <Hero onSearch={handleSearch} loading={loading}/>
+
+        <div className="glow-h" style={{maxWidth:900,margin:"0 auto 28px",opacity:.4}}/>
+
+        <ErrorBanner msg={error} onDismiss={()=>setError(null)}/>
+        <Dashboard data={data} pace={pace} loading={loading}/>
+        {data&&!loading&&<FlashcardGrid cards={data.flashcards||[]}/>}
+
+        <footer style={{borderTop:"1px solid rgba(148,163,184,.07)",padding:"20px 24px",marginTop:8}}>
+          <div style={{maxWidth:900,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontFamily:"'JetBrains Mono'",fontSize:".7rem",color:"#1e293b"}}>NeuralPath © {new Date().getFullYear()}</span>
+            <span style={{fontFamily:"'JetBrains Mono'",fontSize:".7rem",color:"#1e293b",display:"flex",alignItems:"center",gap:6}}>
+              <Icon d={Icons.Lock} size={10} color="#1e293b"/>Powered by Groq · llama3-70b-8192
+            </span>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
